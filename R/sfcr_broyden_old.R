@@ -120,30 +120,8 @@
 
       ## CND statement must be dealt separately
       if (.b %in% cnd_statements) {
-        #This is what I added!
-        if(vctrs::vec_size(block) == 1) # Check if block has only one entry
-        { # Then evaluate the fist entry of block
 
-          m[.i, idvar_] <- eval(exs_l[[.b]][[1]])
-
-        } else { # Else the block has more than one entry
-
-          cnd_idvar <- equations %>% # Get equation id
-            dplyr::filter(stringr::str_detect(.data$rhs, "if"),
-                          stringr::str_detect(.data$rhs, "else"),
-                          block == .b) %>%
-            dplyr::pull(id)
-          # Get positions of if() else statements in block
-          cnd_pos <- suppressWarnings(which(stringr::str_detect(exs_l[[.b]], "if") &
-                             stringr::str_detect(exs_l[[.b]], "else")))
-
-          for(.k in 1:length(cnd_idvar)){ # Evaluate each statement in block
-
-            m[.i, cnd_idvar[.k]] <- eval(exs_l[[.b]][[cnd_pos[.k]]])
-
-          }
-
-        }
+        m[.i, idvar_] <- eval(exs_l[[.b]][[1]])
 
       } else {
 
