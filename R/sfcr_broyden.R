@@ -126,7 +126,8 @@
 
           m[.i, idvar_] <- eval(exs_l[[.b]][[1]])
 
-        } else { # Else the block has more than one entry
+        } else { # Else the block has more than one entry. Than the position of the CND statement
+                 # is looked up and that position is evaluted.
 
           cnd_idvar <- equations %>% # Get equation id
             dplyr::filter(stringr::str_detect(.data$rhs, "if"),
