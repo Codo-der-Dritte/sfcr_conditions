@@ -140,8 +140,6 @@ model_eqs <- sfcr_set(
   Rents ~ rent * Hc[-1],
   # [29] Rent increases
   rent ~ rent[-1] * (1 + y_e),
-  # [Memo] Mortgages.
-  MO ~ MO[-1] + MOo,
   #----------------------------------#
   # Nonfinancial firms
   #----------------------------------#
@@ -415,7 +413,7 @@ model_eqs <- sfcr_set(
 
 # Set up parameter and initial conditions
 
-model_para <- sfcr_set(
+model_ext <- sfcr_set(
   alpha_1c	~	0.7	, #	Consumption function	Parameters
   alpha_0o	~	0	, #	Consumption function	Parameters
   alpha_1o	~	0.8	, #	Consumption function	Parameters
@@ -493,10 +491,11 @@ model_para <- sfcr_set(
 )
 
 model_init <- sfcr_set(
-  G ~ 1244.444,
+  G ~ 1244.444, #	Nominal Government Debt	Initial value
   rho	~	0.4	, #	Mark-up	Initial value
   Bh_port	~	0.4	, #	Assets	Initial value
   pe_port	~	0.25	, #	Assets Initial value
+  Hc_port	~	0.1	, #	Assets	Initial value
   omega	~	1	, #	Sum of wage share	Initial value
   rb	~	0.03	, #	Rate Bonds	Initial value
   ra	~	0.025	, #	Rate Advances (Leitzins)	Initial value
@@ -563,7 +562,6 @@ model_init <- sfcr_set(
   rre_e	~	0.195221198156682	, #	Expected real return on equities	Initial value
   rll	~	0.03	, #	Real rate on loans	Initial value
   dut	~	0	, #	Change in rate of utilization	Initial value
-  Bb	~	0	, #	Banks spreads on central bank interest rate	Initial value
   Nc	~	106.4	, #	Number of capitalists	Initial value
   No	~	2021.6	, #	Number of woekers	Initial value
   Mc	~	1383	, #	Deposits capitalists	Initial value
@@ -593,9 +591,8 @@ model_init <- sfcr_set(
   Ho	~	1430	, #	Houses workers	Initial value
   Ho_1	~	1430	, #	Houses workers	Initial value lag1
   phg_e	~	0	, #	Expected housing price growth	Initial value
-  MO	~	0	, #	Number of Mortgages	Initial value
-  MOo ~ 1000, # Change in Mortgages
-  MOo_1 ~ 1000, # Change in Mortgages lag 1
+  MOo ~ 1000, # Mortgages
+  MOo_1 ~ 1000, # Mortgages lag 1
   rmo	~	0.025	, #	Rate on Mortgages	Initial value
   rh	~	0.01875	, #	Return on houses	Initial value
   rh_e	~	0.01875	, #	Expected retur on houses	Initial value
@@ -609,6 +606,33 @@ model_init <- sfcr_set(
   HNS	~	0	, #	Supply of homes	Initial value
   cc	~	1170.4	, #	Real consumption capitalits	Initial value
   co	~	1170.4	, #	Real consumption workers	Initial value
+  Cc ~ 1820.62, # Nominal consumption capitalits	Initial value
+  Co ~ 1820.62, # Nominal consumption workers	Initial value
+  debt_rep ~ 0.099, # Debt Repayment
+  delta_debt_rep ~ 0, # Change in Debt Repayment
+  HPc ~ 364.1244444, # High-powerd money capitalists
+  HPo ~ 364.1244444, # High-powerd money workers
+  Sho ~ -1465.595, # Savings workers
+  Shc ~ -959.544, # Savings capitalists
+  kgr ~ 0.161892308, # Investmentc(growth of capital stock)
+  Hc_port ~ 0.447456565, # Housing portfolio capitalists
+  Yc_e ~ 861.0787058, # Expected nominal income capitalists
+  rrh_e ~ 0.01875, # Expected real return on houses
+  FB ~ 13.61377778, # Banks Profit
+  Yc_Yo0 ~ 2134.069529, # Total nominal income
+  yc_yo_e ~ 1447.040, # Expected real total income
+  Vf ~ 1212.150123, # Firms wealth
+  HPb ~ 1125.475556, # Demand for High-powered money in Banks
+  HP ~ 2979.2, # Sum of High-powered money
+  A0 ~ 1787.520, # Advances check
+  TT ~ 1121.692, # Total taxes
+  IT ~ 331.02222, # Taxes on production
+  ph1 ~ 3,
+  ph2 ~ 3,
+  WBo ~ 1684.666667, # Wage bill Workers
+  WBc ~ 443.3333333, # Wage bill capitalist
+  yo_e ~ 1218.809, # Real income workers
+  yc_e ~ 228.231, # Real income capitalists
   HU_cond ~ 1,
   HN_cond ~ 1,
   HND_cond ~ 1,
@@ -620,8 +644,7 @@ model_init <- sfcr_set(
   ur1_cond2 ~ 0,
   ur1_cond3 ~ 1,
   ur_cond ~ 1,
-  cond ~ 0,
-
+  cond ~ 0
 )
 
 index <- sfcr_set_index(model_eqs)
@@ -631,12 +654,13 @@ index <- sfcr_set_index(model_eqs)
 
 model_zezza <- sfcr_baseline(
   equations = model_eqs,
-  external = model_para,
+  external = model_ext,
   initial = model_init,
   periods = 100,
   method = "Broyden"
 )
 
+rm(model_zezza)
 # Check which Variables go to Inf or -Inf
 
 col_Inf <- model_zezza %>%
@@ -756,7 +780,7 @@ bs_zezza <- sfcr_matrix(
   r4 = c("CB Advances", b = "-A", cb = "+A"),
   r5 = c("Bank deposits", h5 = "+Mc", h95 = "+Mo", b = "-M"),
   r6 = c("Loans to firms", f = "-L", b = "+L"),
-  r7 = c("Mortgages", h95 = "-MO", b = "+MO"),
+  r7 = c("Mortgages", h95 = "-MOo", b = "+MOo"),
   r8 = c("Treasuries", h5 = "+Bh", b = "+Bb", cb = "+Bcb", g = "-B"),
   r9 = c("Equities", h5 = "+pe * E", f = "-pe * E"),
   r10 = c("Balance", h5 = "-Vc", h95 = "-Vo", f = "-Vf", g = "+GD", s = "+(p * K + ph * HNS)")
@@ -780,12 +804,12 @@ tfm_zezza <- sfcr_matrix(
   r11 = c("Interest on Deposits", h5 = "+rm[-1]*Mc[-1]", h95 = "+rm[-1]*Mo[-1]", b = "-rm[-1]*M[-1]"),
   r12 = c("Interest on Advances", b = "-ra[-1]*A[-1]", cb = "+ra[-1]*A[-1]"),
   r13 = c("Interest on Loans", fcu = "-rl[-1]*L[-1]", b = "+rl[-1]*L[-1]"),
-  r14 = c("Interest on Mortgages", h95 = "-rmo[-1]*MO[-1]", b = "+rmo[-1]*MO[-1]"),
+  r14 = c("Interest on Mortgages", h95 = "-rmo[-1]*MOo[-1]", b = "+rmo[-1]*MOo[-1]"),
   r15 = c("Interest on Bills", h5 = "+rb[-1]*Bh[-1]", b = "+rb[-1]*Bb[-1]", cb = "+rb[-1]*Bcb[-1]", g = "-rb[-1]*B[-1]"),
   r16 = c("Change in Cash", h5 = "-(HPc - HPc[-1])", h95 = "-(HPo - HPo[-1])", b = "-(HPb - HPb[-1])", cb = "+(HP - HP[-1])"),
   r17 = c("Change in Deposits", h5 = "-(Mc - Mc[-1])", h95 = "-(Mo - Mo[-1])", b = "+(M - M[-1])"),
   r18 = c("Change in Loans", fca = "+(L - L[-1])", b = "-(L - L[-1])"),
-  r19 = c("Change in Mortgages", h95 = "+(MO - MO[-1])", b = "-(MO - MO[-1])"),
+  r19 = c("Change in Mortgages", h95 = "+(MOo - MOo[-1])", b = "-(MOo - MOo[-1])"),
   r20 = c("Change in Bills", h5 = "-(Bh - Bh[-1])", b = "-(Bb - Bb[-1])", cb = "-(Bcb - Bcb[-1])", g = "+(B - B[-1])"),
   r21 = c("Change in Advances", b = "+(A - A[-1])", cb = "-(A - A[-1])"),
   r22 = c("Change in Equities", h5 = "-(E - E[-1]) * pe", fca = "+(E - E[-1]) * pe")
