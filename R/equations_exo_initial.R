@@ -61,8 +61,8 @@ model_eqs <- sfcr_set(
   Bh ~ Bh_port * (Vc_e - HPc),
   # [11C1] Bonds portfolio matrix.
   Bh_port ~ (lambda_10 - lambda_11 * rrm  - lambda_12 *
-                 rre_e - lambda_13 * (Yc_e/Vc_e) + lambda_14 *
-                 rrb - lambda_15 * rrh_e),
+               rre_e - lambda_13 * (Yc_e/Vc_e) + lambda_14 *
+               rrb - lambda_15 * rrh_e),
   # [12] Price of Equities.
   pe ~ (pe_port * (Vc_e - HPc) - xi * (I-FU)) / E[-1],
   # [12C1] Equities portfolio matrix.
@@ -133,7 +133,7 @@ model_eqs <- sfcr_set(
   MOo_1 ~ MOo[-1],
   # [27] Change Mortgages.
   MOo ~ MOo[-1] * (1 - morp) +
-           MOo_cond * (ph * (Ho_d) - Sho),
+    MOo_cond * (ph * (Ho_d) - Sho),
   # [0027C1] Condition change Mortgages.
   MOo_cond ~ if(ph * Ho_d - Sho > cond) {1} else {0},
   # [28] Share of rented homes owned by capitalist.
@@ -146,9 +146,9 @@ model_eqs <- sfcr_set(
   # [30] Investment decision - Growth of k depends on actual profits, Tobin's q,
   # borrowing costs from banks and utilization rate. This the the growth rate.
   kgr ~ (iota_0 + iota_1 * FU[-1]/K_1[-1] -
-          iota_2 * rll[-1] * lev[-1] +
-          iota_3 * q[-1] +
-          iota_4 * (ut[-1] - unorm)),
+           iota_2 * rll[-1] * lev[-1] +
+           iota_3 * q[-1] +
+           iota_4 * (ut[-1] - unorm)),
   # [30C1] Leverage.
   lev ~ L/K,
   # [30C2] Tobin's Q.
@@ -409,8 +409,6 @@ model_eqs <- sfcr_set(
   rrh_e ~ (1 + rh_e) / (1 + p_e) - 1,
 )
 
-
-
 # Set up parameter and initial conditions
 
 model_ext <- sfcr_set(
@@ -643,242 +641,16 @@ model_init <- sfcr_set(
   ur1_cond1 ~ 0,
   ur1_cond2 ~ 0,
   ur1_cond3 ~ 1,
-  ur_cond ~ 1
+  ur_cond ~ 1,
+  cond ~ 0
 )
 
-index <- sfcr_set_index(model_eqs)
+model_eqs_df <- unlist(as.character(model_eqs))
+write.xlsx(model_eqs_df, "model_equations.xlsx")
 
+model_init_df <- unlist(as.character(model_init))
+write.xlsx(model_init_df, "model_initial.xlsx")
 
-# Create the Baseline (Policy Steady state)
-
-model_zezza <- sfcr_baseline(
-  equations = model_eqs,
-  external = model_ext,
-  initial = model_init,
-  periods = 100,
-  method = "Broyden"
-)
-
-write.xlsx(model_zezza, "Baseline_Zezza.xlsx", sheetName = "Model_Zezza", col.names = T)
-
-rm(model_zezza)
-# Check which Variables go to Inf or -Inf
-
-col_Inf <- model_zezza %>%
-  select_if(~any(. == Inf | . == -Inf))
-
-col_NaN <- model_zezza %>%
-  select_if(~any(is.na(.)))
-
-col_NaN <- col_NaN[,setdiff(colnames(col_NaN), colnames(col_Inf))]
-
-col_Num <- model_zezza %>%
-  select_if(~!any(is.na(.)))
-
-ncol(model_zezza) == (ncol(col_Inf) + ncol(col_NaN) + ncol(col_Num))
-
-map_vec(col_Inf, ~which(.x == Inf | .x == -Inf))
-vec <- map(col_NaN, ~which(!is.na(.x)))
-unlist(map(vec, ~max(.x)))
-
-
-col_Inf %>%
-  drop_na() %>%
-  mutate(row = row_number()) %>%
-  pivot_longer(values_to = "val", names_to = "var", cols = -row) %>%
-  ggplot(aes(x = row, y = val, color = var)) +
-  geom_point(size=1)+
-  geom_line(alpha = 0.5) +
-  scale_y_continuous(trans = "log10") +
-  theme_minimal()
-
-
-col_Num%>%
-  drop_na() %>%
-  pivot_longer(values_to = "val", names_to = "var", - period) %>%
-  ggplot(aes(x = period, y = val, color = var)) +
-  geom_point(size=1)+
-  geom_line(alpha = 0.5) +
-  scale_y_continuous(trans = "log10") +
-  theme_minimal()
-
-
-model_zezza %>%
-  select(period, kgr, FU, s, sfc, c, i, ih, g) %>%
-  pivot_longer(values_to = "val", names_to = "var", -period) %>%
-  ggplot(aes(x = period, y = val, color = var)) +
-  geom_point(size=1)+
-  geom_line(alpha = 0.5)+
-  scale_y_continuous(trans = "pseudo_log")+
-  scale_x_continuous(limits = c(0,10))
-
-
-
-
-i <- 2
-
-
-#FU ~
-model_zezza$FT[i] - model_zezza$rl[i-1] * model_zezza$L[i-1] - model_zezza$FD[i] - model_zezza$TF[i]
-
-#s ~
-model_zezza$c[i] + model_zezza$i[i] + model_zezza$ih[i] + model_zezza$g[i]
-
-
-#cc~
-model_zezza$alpha_1c[i] * model_zezza$yc_e[i] + model_zezza$alpha_2c[i] * model_zezza$vc[i-1] + model_zezza$alpha_3c[i] *
-  (model_zezza$cge_e[i] + model_zezza$cghc_e[i] - model_zezza$p_e[i] * model_zezza$vc[i-1]/(1 + model_zezza$p_e[i]))
-
-#E ~
-model_zezza$E[i-1] + model_zezza$xi[i] * (model_zezza$I[i] - model_zezza$FU[i]) / model_zezza$pe[i]
-
-#CGE_e ~
-  (model_zezza$pe_e[i] - model_zezza$pe[i-1]) * model_zezza$E[i-1]
-
-#peg_e ~
-  (model_zezza$pe[i-1] / model_zezza$pe_1[i-1] -1) + model_zezza$sigma_pe[i]  *
-  (model_zezza$peg_e[i-1] - (model_zezza$pe[i-1] / model_zezza$pe_1[i-1] -1)) + model_zezza$shockpeg_e[i]
-
-#pe_1 ~
-model_zezza$pe[i-1]
-
-#pe_e ~
-model_zezza$pe[i-1] * (1 + model_zezza$peg_e[i] )
-
-#cge_e ~
-  (model_zezza$pe_e[i]  - model_zezza$pe[i-1]) * model_zezza$E[i-1] / (model_zezza$p[i-1] * (1 + model_zezza$p_e[i] ))
-#re ~
-  (model_zezza$FD[i] + model_zezza$CGE_e[i])/(model_zezza$pe[i-1] * model_zezza$E[i-1])
-
-
-#pe ~
-(model_zezza$pe_port[i] * (model_zezza$Vc_e[i] - model_zezza$HPc[i]) -
-    model_zezza$xi[i] * (model_zezza$I[i]-model_zezza$FU[i])) / model_zezza$E[i-1]
-
-#pe_port ~
-(model_zezza$lambda_20[i] - model_zezza$lambda_21[i] * model_zezza$rrm[i] + model_zezza$lambda_22[i] *
-    model_zezza$rre_e[i] - model_zezza$lambda_23[i] * (model_zezza$Yc_e[i]/model_zezza$Vc_e[i]) - model_zezza$lambda_24[i] *
-    model_zezza$rrb[i] - model_zezza$lambda_25[i] * model_zezza$rrh_e[i])
-
-#kgr ~
-(model_zezza$iota_0[i] + model_zezza$iota_1[i] * model_zezza$FU[i-1]/model_zezza$K_1[i-1] -
-    model_zezza$iota_2[i] * model_zezza$rll[i-1] * model_zezza$lev[i-1] +
-    model_zezza$iota_3[i] * model_zezza$q[i-1] +
-    model_zezza$iota_4[i] * (model_zezza$ut[i-1] - model_zezza$unorm[i]))
-
-
-# Take a look at the Directed acyclic graph
-
-sfcr_dag_blocks_plot(model_eqs, size = 1)
-sfcr_dag_cycles_plot(model_eqs, size = 1)
-
-bs_zezza <- sfcr_matrix(
-  columns = c("Household (Top 5%)" ,"Household (Bottom 95%)", "Firms", "Banks", "Central Bank", "Government", "Sum"),
-  codes = c("h5", "h95", "f", "b", "cb", "g", "s"),
-  r1 = c("Productive Capital", f = "+p * k", s = "+p * k"),
-  r2 = c("Homes", h5 = "+ph * Hc", h95 = "+ph * Ho", f = "+ph * HU", s = "+ph * HNS"),
-  r3 = c("Cash", h5 = "+HPc", h95 = "+HPo", b = "+HPb", cb = "-HP"),
-  r4 = c("CB Advances", b = "-A", cb = "+A"),
-  r5 = c("Bank deposits", h5 = "+Mc", h95 = "+Mo", b = "-M"),
-  r6 = c("Loans to firms", f = "-L", b = "+L"),
-  r7 = c("Mortgages", h95 = "-MOo", b = "+MOo"),
-  r8 = c("Treasuries", h5 = "+Bh", b = "+Bb", cb = "+Bcb", g = "-B"),
-  r9 = c("Equities", h5 = "+pe * E", f = "-pe * E"),
-  r10 = c("Balance", h5 = "-Vc", h95 = "-Vo", f = "-Vf", g = "+GD", s = "+(p * k + ph * HNS)")
-)
-
-sfcr_matrix_display(bs_zezza, "bs")
-
-tfm_zezza <- sfcr_matrix(
-  columns = c("Household (Top 5%)" ,"Household (Bottom 95%)", "Firms Cur.", "Firms Cap.", "Banks", "Central Bank", "Government", "Production"),
-  codes = c("h5", "h95", "fcu", "fca", "b", "cb", "g", "prod"),
-  r1 = c("Wages", h5 = "+WBc", h95 = "+WBo", prod = "-WB"),
-  r2 = c("Consumption", h5 = "-p * cc", h95 = "-p * co", prod = "+p * c"),
-  r3 = c("Profit Firms", h5 = "+FD", fcu = "+FT", fca = "+FU", prod = "-FT"),
-  r4 = c("Profit Banks", h5 = "+FB", b = "-FB"),
-  r5 = c("Profit Central Bank", cb = "-FC", g = "+FC"),
-  r6 = c("Rents", h5 = "+Rents", h95 = "-Rents"),
-  r7 = c("Government Spending", g = "-p * g", prod = "+p * g"),
-  r8 = c("Taxes", h5 = "-Tdc", h95 = "-Tdo", fcu = "-TF", g = "+TT", prod = "-IT"),
-  r9 = c("Investment in productive capital", fca = "+(k - k[-1]) * p", prod = "-(k - k[-1]) * p"),
-  r10 = c("Investment in Housing", fca = "+(HN - HN[-1]) * ph", prod = "-(HN - HN[-1]) * ph"),
-  r11 = c("Interest on Deposits", h5 = "+rm[-1]*Mc[-1]", h95 = "+rm[-1]*Mo[-1]", b = "-rm[-1]*M[-1]"),
-  r12 = c("Interest on Advances", b = "-ra[-1]*A[-1]", cb = "+ra[-1]*A[-1]"),
-  r13 = c("Interest on Loans", fcu = "-rl[-1]*L[-1]", b = "+rl[-1]*L[-1]"),
-  r14 = c("Interest on Mortgages", h95 = "-rmo[-1]*MOo[-1]", b = "+rmo[-1]*MOo[-1]"),
-  r15 = c("Interest on Bills", h5 = "+rb[-1]*Bh[-1]", b = "+rb[-1]*Bb[-1]", cb = "+rb[-1]*Bcb[-1]", g = "-rb[-1]*B[-1]"),
-  r16 = c("Change in Cash", h5 = "-(HPc - HPc[-1])", h95 = "-(HPo - HPo[-1])", b = "-(HPb - HPb[-1])", cb = "+(HP - HP[-1])"),
-  r17 = c("Change in Deposits", h5 = "-(Mc - Mc[-1])", h95 = "-(Mo - Mo[-1])", b = "+(M - M[-1])"),
-  r18 = c("Change in Loans", fca = "+(L - L[-1])", b = "-(L - L[-1])"),
-  r19 = c("Change in Mortgages", h95 = "+(MOo - MOo[-1])", b = "-(MOo - MOo[-1])"),
-  r20 = c("Change in Bills", h5 = "-(Bh - Bh[-1])", b = "-(Bb - Bb[-1])", cb = "-(Bcb - Bcb[-1])", g = "+(B - B[-1])"),
-  r21 = c("Change in Advances", b = "+(A - A[-1])", cb = "-(A - A[-1])"),
-  r22 = c("Change in Equities", h5 = "-(E - E[-1]) * pe", fca = "+(E - E[-1]) * pe")
-)
-
-
-sfcr_matrix_display(tfm_zezza, "tfm")
-
-#Check for model consistency
-sfcr_validate(bs_zezza, model_zezza, which = "bs")
-sfcr_validate(tfm_zezza, model_zezza, which = "tfm")
-
-
-
-# Check Model for consistent
-
-
-all.equal(model_sim$Hh, model_sim$Hh1)
-
-sfcr_sankey(tfm_pc, model_sim, when = "end")
-# Equilibrium values of variables
-
-model_var <- model_sim %>%
-  select(period,Y, TX, r, Bh) %>%
-  mutate("YD" = Y - TX + dplyr::lag(r) * dplyr::lag(Bh)) %>%
-
-  pivot_longer(names_to = "vars", values_to = "val", -1)
-
-ggplot(data = model_var, aes(x = period, y = val, color = vars)) +
-  geom_line()
-
-# Add shock to system
-
-shocka0 <- sfcr_shock(
-  variables = list(
-    a0 ~ 60
-  ),
-  start = 10,
-  end = 50
-)
-
-model_shock <- sfcr_scenario(
-  baseline = model_sim,
-  scenario = shocka0,
-  periods = 50)
-
-
-# Plot scenario
-
-dtt <- model_shock %>%
-  pivot_longer(names_to = "names", values_to =  "values", - period)
-
-dtt %>%
-  filter(names %in% c("Yt", "YDt", "Lt", "Ct", "Kt")) %>%
-  ggplot(aes(x = period, y = values, color = names)) +
-  labs(x = "Periods", y = "Value") +
-  scale_color_brewer(palette = "Paired") +
-  geom_line(linewidth = 1.5) +
-  theme_minimal()
-
-
-
-
-
-
-
-
-
-
-
+model_ext_df <- unlist(as.character(model_ext))
+write.xlsx(model_ext_df, "model_exo.xlsx")
 

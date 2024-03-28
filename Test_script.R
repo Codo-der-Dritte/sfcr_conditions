@@ -1,4 +1,4 @@
-libs <- c("tidyverse", "leaflet", "lubridate", "readxl", "scales", "ggraph", "networkD3", "igraph", "expm")
+libs <- c("tidyverse", "leaflet", "lubridate", "readxl", "scales", "xlsx", "ggraph", "networkD3", "igraph", "expm")
 installed_libs <- libs %in% rownames(installed.packages())
 if (any(installed_libs == F)) {
   install.packages(libs[!installed_libs])
